@@ -1,0 +1,8 @@
+.env
+*.pyc
+.venv/
+venv/
+*.log
+data/
+tmp/
+EOF
