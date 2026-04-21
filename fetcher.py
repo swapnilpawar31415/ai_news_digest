@@ -19,31 +19,24 @@ SOURCE_CAPS = {
 }
 
 FEEDS = {
-    # Enterprise AI
+    # Enterprise AI — news sites
     "VentureBeat AI":       "https://venturebeat.com/category/ai/feed/",
     "TechCrunch AI":        "https://techcrunch.com/category/artificial-intelligence/feed/",
     "MIT Tech Review":      "https://www.technologyreview.com/feed/",
     "The Verge AI":         "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
     "Ars Technica":         "https://feeds.arstechnica.com/arstechnica/index",
-    "Anthropic Blog":       "https://www.anthropic.com/rss.xml",
     "OpenAI Blog":          "https://openai.com/blog/rss.xml",
+    # Enterprise AI — newsletters (Substack)
+    "Import AI":            "https://importai.substack.com/feed",
     # Financial Services / Global Banking AI
-    "Reuters Tech":         "https://feeds.reuters.com/reuters/technologyNews",
     "PYMNTS":               "https://www.pymnts.com/feed/",
     "Finextra":             "https://www.finextra.com/rss/channel.aspx?channel=news",
-    "American Banker":      "https://www.americanbanker.com/feed",
-    "The Financial Brand":  "https://thefinancialbrand.com/feed/",
     # India Tech + Indian Companies Deploying AI
     "Economic Times Tech":  "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms",
     "Inc42":                "https://inc42.com/feed/",
     "YourStory":            "https://yourstory.com/feed",
-    "Analytics India Mag":  "https://analyticsindiamag.com/feed/",
-    "Moneycontrol Tech":    "https://www.moneycontrol.com/rss/technology.xml",
-    "Business Standard":    "https://www.business-standard.com/rss/technology-108.rss",
     "NDTV Gadgets360":      "https://feeds.feedburner.com/gadgets360-latest",
-    # RBI / SEBI
-    "RBI":                  "https://www.rbi.org.in/Scripts/rss.aspx?Id=2",
-    "SEBI":                 "https://www.sebi.gov.in/sebi_data/rss/rss_release.xml",
+    "Livemint Tech":        "https://www.livemint.com/rss/technology",
     # AI Research
     "arXiv cs.AI":          "http://arxiv.org/rss/cs.AI",
     "arXiv cs.LG":          "http://arxiv.org/rss/cs.LG",

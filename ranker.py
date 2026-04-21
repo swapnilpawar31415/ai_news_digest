@@ -9,7 +9,8 @@ log = logging.getLogger(__name__)
 SYSTEM_PROMPT = """\
 You are an AI news analyst for an enterprise AI professional working in financial services in India.
 
-For each article provided, you will do two things:
+For each article provided, you will do three things:
+
 1. Score its relevance on a scale of 1–10 using this rubric:
    - 9–10: Enterprise AI in Indian financial services (banking, insurance, capital markets, payments),
            RBI/SEBI AI regulation, Indian bank or insurer deploying AI at scale, DPDP compliance + AI
@@ -21,7 +22,13 @@ For each article provided, you will do two things:
    - 1–2: Hardware/chip news, gaming AI, celebrity AI, academic-only ML theory, general tech news
            with no enterprise AI relevance
 
-2. Write a 1-paragraph summary (3–4 sentences) focused on the enterprise/finance/India angle.
+2. Assign a section using exactly one of these three values:
+   - "india"       — AI in Indian enterprise, listed companies, BFSI, or Indian regulation (RBI/SEBI/DPDP)
+   - "global_bfsi" — AI use in global (non-India) banking, insurance, capital markets, or payments
+   - "startups"    — Novel AI use cases, product launches, research, or startups (Indian or global)
+   When in doubt between "india" and another section, prefer "india" if the article has a clear India angle.
+
+3. Write a 1-paragraph summary (3–4 sentences) focused on the enterprise/finance/India angle.
    For articles scoring 1–3, keep it to 2 sentences.
    The summary should explain what happened, why it matters for enterprise AI in financial services or India,
    and any regulatory or strategic implications.
@@ -29,6 +36,7 @@ For each article provided, you will do two things:
 Return ONLY a valid JSON array. Each element must have exactly these keys:
   "id": integer (the article number as given)
   "score": integer 1–10
+  "section": one of "india", "global_bfsi", "startups"
   "summary": string
 
 Output nothing else — no preamble, no explanation, no markdown fences.\
@@ -46,16 +54,15 @@ def _build_prompt(articles: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def score_and_summarize(articles: list[dict]) -> list[dict]:
-    if not articles:
-        return []
+BATCH_SIZE = 50
 
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
+def _score_batch(client: anthropic.Anthropic, articles: list[dict], batch_num: int) -> list[dict]:
+    """Score and summarize a single batch. Returns enriched articles."""
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=8000,
+            max_tokens=6000,
             system=[
                 {
                     "type": "text",
@@ -71,12 +78,10 @@ def score_and_summarize(articles: list[dict]) -> list[dict]:
             ],
         )
     except Exception as e:
-        log.error("Claude API call failed: %s", e)
+        log.error("Claude API call failed (batch %d): %s", batch_num, e)
         return _fallback(articles)
 
     raw = response.content[0].text.strip()
-
-    # Strip markdown fences if Claude wraps in them anyway
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -85,10 +90,9 @@ def score_and_summarize(articles: list[dict]) -> list[dict]:
     try:
         rankings = json.loads(raw)
     except json.JSONDecodeError as e:
-        log.error("JSON parse failed: %s\nRaw output (first 1000 chars):\n%s", e, raw[:1000])
+        log.error("JSON parse failed (batch %d): %s\nRaw output:\n%s", batch_num, e, raw[:1000])
         return _fallback(articles)
 
-    # Map id → {score, summary} and attach to original articles
     rank_map = {item["id"]: item for item in rankings}
     enriched = []
     for i, art in enumerate(articles, 1):
@@ -96,12 +100,14 @@ def score_and_summarize(articles: list[dict]) -> list[dict]:
         enriched.append({
             **art,
             "score": int(ranking.get("score", 5)),
+            "section": ranking.get("section", "startups"),
             "summary": ranking.get("summary", "(summary unavailable)"),
         })
 
     usage = response.usage
     log.info(
-        "Claude usage — input: %d, output: %d, cache_read: %d",
+        "Batch %d — input: %d, output: %d, cache_read: %d",
+        batch_num,
         usage.input_tokens,
         usage.output_tokens,
         getattr(usage, "cache_read_input_tokens", 0),
@@ -109,8 +115,23 @@ def score_and_summarize(articles: list[dict]) -> list[dict]:
     return enriched
 
 
+def score_and_summarize(articles: list[dict]) -> list[dict]:
+    if not articles:
+        return []
+
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    batches = [articles[i:i + BATCH_SIZE] for i in range(0, len(articles), BATCH_SIZE)]
+    log.info("Scoring %d articles in %d batch(es)...", len(articles), len(batches))
+
+    results = []
+    for n, batch in enumerate(batches, 1):
+        results.extend(_score_batch(client, batch, n))
+    return results
+
+
 def _fallback(articles: list[dict]) -> list[dict]:
-    return [{**art, "score": 5, "summary": "(summary unavailable)"} for art in articles]
+    return [{**art, "score": 5, "section": "startups", "summary": "(summary unavailable)"} for art in articles]
 
 
 if __name__ == "__main__":

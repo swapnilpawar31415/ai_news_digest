@@ -42,9 +42,40 @@ def _article_block(art: dict) -> str:
 """
 
 
+SECTIONS = [
+    ("india",       "🇮🇳 AI in Indian Enterprise, BFSI &amp; Regulation"),
+    ("global_bfsi", "🌐 Global BFSI AI"),
+    ("startups",    "💡 Novel AI Use Cases &amp; Startups"),
+]
+
+
+def _section_header(label: str) -> str:
+    return (
+        f'<div style="margin:8px 0 20px;padding-bottom:8px;border-bottom:2px solid #1a1a2e;">'
+        f'<span style="font-size:15px;font-weight:700;color:#1a1a2e;">{label}</span>'
+        f'</div>'
+    )
+
+
 def build_html(articles: list[dict], total_fetched: int, source_count: int) -> str:
     today = date.today().strftime("%d %B %Y")
-    article_blocks = "".join(_article_block(a) for a in articles)
+
+    # Group by section, preserving score-sorted order within each section
+    grouped = {key: [] for key, _ in SECTIONS}
+    for art in articles:
+        sec = art.get("section", "startups")
+        if sec not in grouped:
+            sec = "startups"
+        grouped[sec].append(art)
+
+    section_html = ""
+    for key, label in SECTIONS:
+        arts = grouped[key]
+        if not arts:
+            continue
+        section_html += _section_header(label)
+        section_html += "".join(_article_block(a) for a in arts)
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -78,7 +109,7 @@ def build_html(articles: list[dict], total_fetched: int, source_count: int) -> s
         <!-- Articles -->
         <tr>
           <td style="padding:28px 32px;">
-            {article_blocks}
+            {section_html}
           </td>
         </tr>
 
